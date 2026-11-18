@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#172622">
+  <meta name="description" content="Halfway plans a memorable two-stop outing that is fair for both people, using real places from Overture Maps.">
+  <title>Halfway SF — Make the trip worth it</title>
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="./styles.css">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a href="./" class="wordmark" aria-label="Halfway home"><span class="logo-mark" aria-hidden="true"><i></i><i></i><b>↔</b></span><span>halfway<span class="brand-period">.</span></span></a>
+      <div class="topbar-right"><span class="edition">A CITY FIELD GUIDE <span class="edition-divider">/</span> SAN FRANCISCO</span><a href="#method" class="top-link">How it works <span aria-hidden="true">↗</span></a></div>
+    </header>
+
+    <section class="intro" aria-labelledby="page-title">
+      <div class="intro-ornament" aria-hidden="true"><span>37° 46′ N</span><span>122° 25′ W</span></div>
+      <p class="eyebrow"><span class="eyebrow-line"></span> THE TWO-PERSON OUTING PLANNER</p>
+      <h1 id="page-title">Make the trip <em>worth it.</em></h1>
+      <p class="intro-copy">Two starting points. One genuinely good plan. Find a place to meet, then something nearby to do together.</p>
+      <div class="data-strip"><span class="signal-dot" aria-hidden="true"></span><strong>9,443 real places</strong><span>from Overture Maps, mapped for San Francisco</span></div>
+    </section>
+
+    <section class="controls" aria-labelledby="start-title">
+      <div class="section-heading"><span class="step">01</span><h2 id="start-title">Set your starting points</h2></div>
+      <div class="start-grid">
+        <div class="start-card start-a"><div class="start-title"><span class="point-badge point-a">A</span><label for="start-a">You</label></div><select id="start-a" aria-label="Your starting neighborhood"></select><button class="map-pick" type="button" data-pick="a" aria-label="Pick your start on the map"><span aria-hidden="true">⌖</span> Pick on map</button></div>
+        <div class="start-card start-b"><div class="start-title"><span class="point-badge point-b">B</span><label for="start-b">Your person</label></div><select id="start-b" aria-label="Their starting neighborhood"></select><button class="map-pick" type="button" data-pick="b" aria-label="Pick their start on the map"><span aria-hidden="true">⌖</span> Pick on map</button></div>
+      </div>
+
+      <div class="section-heading template-heading"><span class="step">02</span><h2 id="template-title">Pick the kind of day</h2></div>
+      <div class="template-grid" role="group" aria-labelledby="template-title">
+        <button class="template active" type="button" data-template="coffee_walk" aria-pressed="true"><span class="template-icon" aria-hidden="true">☕</span><span class="template-text"><strong>Coffee & a wander</strong><small>Café → outdoor spot</small></span><span class="template-check" aria-hidden="true">↗</span></button>
+        <button class="template" type="button" data-template="dinner_culture" aria-pressed="false"><span class="template-icon" aria-hidden="true">✳</span><span class="template-text"><strong>A bite & some art</strong><small>Restaurant → gallery</small></span><span class="template-check" aria-hidden="true">↗</span></button>
+        <button class="template" type="button" data-template="drinks_culture" aria-pressed="false"><span class="template-icon" aria-hidden="true">◐</span><span class="template-text"><strong>Drinks & a show</strong><small>Bar → performance</small></span><span class="template-check" aria-hidden="true">↗</span></button>
+        <button class="template" type="button" data-template="park_bite" aria-pressed="false"><span class="template-icon" aria-hidden="true">❋</span><span class="template-text"><strong>Fresh air & a bite</strong><small>Outdoor spot → food</small></span><span class="template-check" aria-hidden="true">↗</span></button>
+      </div>
+
+      <div class="fine-tune"><div class="fine-tune-label"><span class="step">03</span><h2>Fine-tune the plan</h2></div><div class="tune-row"><label for="distance-limit">Max trip to the first stop</label><select id="distance-limit"><option value="2">2 miles</option><option value="3">3 miles</option><option value="5" selected>5 miles</option><option value="8">8 miles</option><option value="100">Any distance</option></select></div><div class="tune-row priority-row"><span id="priority-label">Optimize for</span><div class="segmented" role="group" aria-labelledby="priority-label"><button type="button" data-priority="shortest" aria-pressed="false">Short trip</button><button type="button" data-priority="balanced" class="active" aria-pressed="true">Fair split</button></div></div></div>
+    </section>
+
+    <section class="map-panel" aria-label="Map of the outing and starting points">
+      <div id="map" role="application" aria-label="Interactive map. Use Pick on map to set a starting point."></div>
+      <div class="map-topline"><span class="map-topline-icon">↗</span><span>THE CITY BETWEEN YOU</span></div>
+      <div id="map-hint" class="map-hint" hidden><span class="hint-pulse"></span><span id="map-hint-text">Click the map to place A</span><button id="cancel-pick" type="button" aria-label="Cancel map selection">×</button></div>
+      <div id="map-plan" class="map-plan" hidden><span class="map-plan-kicker">ON THE MAP <span id="map-plan-num">/ PLAN 01</span></span><strong id="map-plan-title">Your two-stop plan</strong><span id="map-plan-detail"></span></div>
+      <div class="map-legend"><span><i class="legend-dot legend-a"></i>You</span><span><i class="legend-dot legend-b"></i>Your person</span><span><i class="legend-dot legend-stop"></i>The plan</span></div>
+      <div id="map-fallback" class="map-fallback" hidden>The map is unavailable right now. You can still choose neighborhoods and explore the plans below.</div>
+    </section>
+
+    <section class="results" aria-labelledby="results-title">
+      <div class="results-heading"><div><p class="eyebrow"><span class="eyebrow-line"></span> CURATED BY GEOGRAPHY</p><h2 id="results-title">Three good ways <em>to meet.</em></h2></div><button id="share-button" class="share-button" type="button" aria-label="Copy a link to this search"><span aria-hidden="true">↗</span> Share</button></div>
+      <p id="results-summary" class="results-summary" role="status" aria-live="polite">Finding your plans…</p>
+      <div id="results-list" class="results-list"></div>
+      <div id="empty-state" class="empty-state" hidden><div aria-hidden="true">⌁</div><h3>No two-stop plans in this range.</h3><p>Try a wider trip distance or choose a different kind of day.</p></div>
+    </section>
+
+    <footer id="method" class="footer"><div class="footer-brand">↔ halfway.</div><div class="footer-copy"><strong>Made with real map data and honest estimates.</strong><p>Places and categories come from <a href="https://overturemaps.org/" target="_blank" rel="noopener noreferrer">Overture Maps</a>. Distances shown are straight-line estimates, not walking or transit times. Check opening hours, access, and directions before going. The map uses © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a> tiles.</p></div><div class="footer-method"><strong>How plans are chosen</strong><p>We use relevant place types, high-confidence records, and websites where available. Then we rank fair travel to stop 1, a short hop to stop 2, and variety across the shortlist. No ratings, paid placements, or invented hours.</p></div></footer>
+  </div>
+</body>
+</html>
