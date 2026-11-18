@@ -1,0 +1,6 @@
+services:
+  - type: web
+    runtime: static
+    name: halfway-sf
+    buildCommand: test -f dist/index.html && test -f dist/places.json
+    staticPublishPath: ./dist
