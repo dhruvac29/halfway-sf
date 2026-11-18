@@ -1,5 +1,7 @@
 # Halfway SF
 
+**Live demo:** [halfway-sf.onrender.com](https://halfway-sf.onrender.com/)
+
 **One-sentence pitch:** Halfway turns two San Francisco starting points into a fair, two-stop outing—somewhere to meet, followed by something nearby to do together—using real places from Overture Maps.
 
 ## Why this product
