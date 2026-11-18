@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#172622">
   <meta name="description" content="Halfway plans a memorable two-stop outing that is fair for both people, using real places from Overture Maps.">
-  <title>Halfway SF — Make the trip worth it</title>
+  <title>Halfway SF | Make the trip worth it</title>
   <link rel="preconnect" href="https://tile.openstreetmap.org">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="./styles.css">
@@ -59,6 +59,16 @@
       <p id="results-summary" class="results-summary" role="status" aria-live="polite">Finding your plans…</p>
       <div id="results-list" class="results-list"></div>
       <div id="empty-state" class="empty-state" hidden><div aria-hidden="true">⌁</div><h3>No two-stop plans in this range.</h3><p>Try a wider trip distance or choose a different kind of day.</p></div>
+    </section>
+
+    <section class="atlas" aria-labelledby="atlas-title">
+      <p class="atlas-kicker"><span class="step">04</span> THE COMPROMISE ATLAS</p>
+      <h2 id="atlas-title">Explore the <em>trade-offs.</em></h2>
+      <p class="atlas-intro">The short list is a starting point. Move across the city and see how each meeting place shifts the trip between you and your person.</p>
+      <div class="atlas-toolbar"><span id="atlas-count" role="status" aria-live="polite">Mapping the options...</span><button id="atlas-fair" type="button" aria-pressed="false">Near-even routes only</button></div>
+      <div class="atlas-chart"><div id="atlas-plot" class="atlas-plot" aria-label="Interactive chart of each person's trip to the meeting place"></div><div class="atlas-mobile-hint">Swipe the chart to see more routes <span aria-hidden="true">→</span></div><div class="atlas-legend"><span><i class="atlas-key atlas-key-even"></i>Near even</span><span><i class="atlas-key atlas-key-split"></i>Uneven split</span><span><i class="atlas-key atlas-key-current"></i>Selected</span></div></div>
+      <div id="atlas-detail" class="atlas-detail" hidden></div>
+      <p class="atlas-note">Each point is a real two-stop route using Overture places. The shaded diagonal is the near-even zone: the two straight-line trips to stop 1 differ by no more than 0.3 miles. Select a point to inspect its second stop.</p>
     </section>
 
     <footer id="method" class="footer"><div class="footer-brand">↔ halfway.</div><div class="footer-copy"><strong>Made with real map data and honest estimates.</strong><p>Places and categories come from <a href="https://overturemaps.org/" target="_blank" rel="noopener noreferrer">Overture Maps</a>. Distances shown are straight-line estimates, not walking or transit times. Check opening hours, access, and directions before going. The map uses © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a> tiles.</p></div><div class="footer-method"><strong>How plans are chosen</strong><p>We use relevant place types, high-confidence records, and websites where available. Then we rank fair travel to stop 1, a short hop to stop 2, and variety across the shortlist. No ratings, paid placements, or invented hours.</p></div></footer>

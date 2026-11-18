@@ -24,7 +24,8 @@ const state = {
   a: { name: NEIGHBORHOODS[0][0], lat: NEIGHBORHOODS[0][1], lon: NEIGHBORHOODS[0][2] },
   b: { name: NEIGHBORHOODS[1][0], lat: NEIGHBORHOODS[1][1], lon: NEIGHBORHOODS[1][2] },
   template: "coffee_walk", limit: 5, priority: "balanced", pairs: {},
-  selected: null, requestedPlan: null, visiblePlans: [], picking: null, loaded: false,
+  selected: null, requestedPlan: null, visiblePlans: [], atlasFairOnly: false,
+  picking: null, loaded: false,
 };
 
 const $ = id => document.getElementById(id);
@@ -36,6 +37,8 @@ const els = {
   hint: $("map-hint"), hintText: $("map-hint-text"), panel: document.querySelector(".map-panel"),
   fallback: $("map-fallback"), mapPlan: $("map-plan"), mapPlanNum: $("map-plan-num"),
   mapPlanTitle: $("map-plan-title"), mapPlanDetail: $("map-plan-detail"), share: $("share-button"),
+  atlasPlot: $("atlas-plot"), atlasCount: $("atlas-count"), atlasFair: $("atlas-fair"),
+  atlasDetail: $("atlas-detail"),
 };
 
 let map = null;
@@ -81,6 +84,7 @@ function readHash() {
   if (TEMPLATES[params.get("kind")]) state.template = params.get("kind");
   if ([2, 3, 5, 8, 100].includes(Number(params.get("max")))) state.limit = Number(params.get("max"));
   if (["balanced", "shortest"].includes(params.get("focus"))) state.priority = params.get("focus");
+  state.atlasFairOnly = params.get("fair") === "1";
   state.requestedPlan = params.get("plan");
 }
 
@@ -91,6 +95,7 @@ function writeHash() {
     kind: state.template, max: String(state.limit), focus: state.priority,
   });
   if (state.selected) params.set("plan", state.selected);
+  if (state.atlasFairOnly) params.set("fair", "1");
   history.replaceState(null, "", `#${params.toString()}`);
 }
 
@@ -154,6 +159,41 @@ function pickDiverse(ranked) {
     if (chosen.length === 3) break;
   }
   return chosen;
+}
+
+function atlasCandidates(ranked, shortlist) {
+  if (!ranked.length) return [];
+  const bestTrip = Math.max(ranked[0].da, ranked[0].db);
+  const ceiling = Math.min(state.limit, bestTrip + 2.4);
+  const eligible = ranked.filter(plan => Math.max(plan.da, plan.db) <= ceiling);
+  let minA = Infinity, maxA = 0, minB = Infinity, maxB = 0;
+  for (const plan of eligible) {
+    minA = Math.min(minA, plan.da); maxA = Math.max(maxA, plan.da);
+    minB = Math.min(minB, plan.db); maxB = Math.max(maxB, plan.db);
+  }
+  const spanA = Math.max(.01, maxA - minA), spanB = Math.max(.01, maxB - minB);
+  const cells = new Map();
+
+  for (const plan of eligible) {
+    const aBand = Math.min(5, Math.floor((plan.da - minA) / spanA * 6));
+    const bBand = Math.min(5, Math.floor((plan.db - minB) / spanB * 6));
+    const key = `${aBand}:${bBand}`;
+    if (!cells.has(key)) cells.set(key, plan);
+  }
+
+  const picked = [...shortlist];
+  const seen = new Set(picked.map(planKey));
+  for (const plan of cells.values()) {
+    const key = planKey(plan);
+    if (!seen.has(key)) { picked.push(plan); seen.add(key); }
+  }
+  if (!picked.some(plan => Math.abs(plan.da - plan.db) <= .3)) {
+    const fair = eligible.find(plan => Math.abs(plan.da - plan.db) <= .3);
+    if (fair && !seen.has(planKey(fair))) {
+      picked.push(fair);
+    }
+  }
+  return picked;
 }
 
 function initMap() {
@@ -222,8 +262,8 @@ function stopPicking() {
 function selectPlan(key, fromMap = false) {
   state.selected = key;
   render(); writeHash();
-  if (window.innerWidth < 851 && !fromMap) els.panel.scrollIntoView({ block: "center", behavior: "smooth" });
-  if (fromMap) document.querySelector(`.plan-card.selected`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  if (window.innerWidth < 851 && fromMap === false) els.panel.scrollIntoView({ block: "center", behavior: "smooth" });
+  if (fromMap === true) (document.querySelector(".plan-card.selected") || els.atlasDetail).scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 function mapsLink(place) {
@@ -260,6 +300,101 @@ function resultCard(plan, index) {
   return article;
 }
 
+function svgNode(tag, attributes = {}, content) {
+  const item = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [key, value] of Object.entries(attributes)) item.setAttribute(key, String(value));
+  if (content !== undefined) item.textContent = content;
+  return item;
+}
+
+function renderAtlas(candidates, chosen, rankedCount) {
+  els.atlasFair.setAttribute("aria-pressed", String(state.atlasFairOnly));
+  els.atlasFair.classList.toggle("active", state.atlasFairOnly);
+  const points = state.atlasFairOnly
+    ? candidates.filter(plan => Math.abs(plan.da - plan.db) <= .3)
+    : candidates;
+  els.atlasCount.textContent = rankedCount
+    ? `${points.length} routes to compare from ${rankedCount.toLocaleString()} qualifying place pairs`
+    : "No routes in this range";
+  if (!points.length) {
+    els.atlasPlot.replaceChildren(node("p", "atlas-empty", state.atlasFairOnly
+      ? "No near-even routes match this search. Try another starting pair or a wider trip distance."
+      : "Widen the trip distance to explore routes."));
+    els.atlasDetail.hidden = true;
+    return;
+  }
+
+  const width = 720, height = 300;
+  const frame = { left: 62, right: 23, top: 29, bottom: 58 };
+  const trips = points.flatMap(plan => [plan.da, plan.db]);
+  const minTrip = Math.max(0, Math.floor(Math.min(...trips) * 2) / 2);
+  const maxTrip = Math.max(minTrip + .5, Math.ceil(Math.max(...trips) * 2) / 2);
+  const plotWidth = width - frame.left - frame.right;
+  const plotHeight = height - frame.top - frame.bottom;
+  const x = value => frame.left + (value - minTrip) / (maxTrip - minTrip) * plotWidth;
+  const y = value => height - frame.bottom - (value - minTrip) / (maxTrip - minTrip) * plotHeight;
+  const svg = svgNode("svg", { viewBox: `0 0 ${width} ${height}`, role: "group", "aria-label": "Choose a two-stop route by comparing the distance person A and person B travel to the meeting place" });
+  const clip = svgNode("clipPath", { id: "atlas-clip" });
+  clip.append(svgNode("rect", { x: frame.left, y: frame.top, width: plotWidth, height: plotHeight }));
+  svg.append(svgNode("defs", {}, undefined));
+  svg.firstChild.append(clip);
+  const band = [
+    [minTrip, minTrip - .3], [maxTrip, maxTrip - .3],
+    [maxTrip, maxTrip + .3], [minTrip, minTrip + .3],
+  ].map(([a, b]) => `${x(a)},${y(b)}`).join(" ");
+  svg.append(svgNode("polygon", { points: band, class: "atlas-even-zone", "clip-path": "url(#atlas-clip)" }));
+
+  for (let i = 0; i <= 4; i++) {
+    const value = minTrip + (maxTrip - minTrip) * i / 4;
+    const yy = y(value);
+    svg.append(svgNode("line", { x1: frame.left, y1: yy, x2: width - frame.right, y2: yy, class: "atlas-gridline" }));
+    svg.append(svgNode("text", { x: frame.left - 11, y: yy + 4, "text-anchor": "end", class: "atlas-tick" }, value.toFixed(1)));
+  }
+  for (let i = 0; i <= 4; i++) {
+    const value = minTrip + (maxTrip - minTrip) * i / 4;
+    const xx = x(value);
+    svg.append(svgNode("line", { x1: xx, y1: frame.top, x2: xx, y2: height - frame.bottom, class: "atlas-gridline atlas-gridline-vertical" }));
+    svg.append(svgNode("text", { x: xx, y: height - frame.bottom + 21, "text-anchor": "middle", class: "atlas-tick" }, value.toFixed(1)));
+  }
+  svg.append(svgNode("line", { x1: x(minTrip), y1: y(minTrip), x2: x(maxTrip), y2: y(maxTrip), class: "atlas-even-line" }));
+  svg.append(svgNode("text", { x: frame.left, y: 17, class: "atlas-axis-label atlas-axis-b" }, "PERSON B TO STOP 1 (MI)"));
+  svg.append(svgNode("text", { x: width - frame.right, y: height - 6, "text-anchor": "end", class: "atlas-axis-label atlas-axis-a" }, "PERSON A TO STOP 1 (MI)"));
+
+  const ordered = [...points].sort((a, b) => Number(planKey(a) === state.selected) - Number(planKey(b) === state.selected));
+  for (const plan of ordered) {
+    const selected = planKey(plan) === state.selected;
+    const fair = Math.abs(plan.da - plan.db) <= .3;
+    const circle = svgNode("circle", {
+      cx: x(plan.da), cy: y(plan.db), r: selected ? 11 : 8,
+      class: `atlas-point ${fair ? "atlas-point-even" : "atlas-point-split"}${selected ? " selected" : ""}`,
+      role: "button", tabindex: "0", "aria-pressed": selected,
+      "aria-label": `${plan.first.name}, then ${plan.second.name}. Person A ${fmt(plan.da)}; person B ${fmt(plan.db)}; stops ${fmt(plan.hop)} apart. ${fair ? "Near-even" : "Uneven"} meeting place.`,
+    });
+    circle.append(svgNode("title", {}, `${plan.first.name} → ${plan.second.name}`));
+    circle.addEventListener("click", () => { selectPlan(planKey(plan), "atlas"); els.atlasPlot.querySelector(".atlas-point.selected")?.focus({ preventScroll: true }); });
+    circle.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectPlan(planKey(plan), "atlas"); els.atlasPlot.querySelector(".atlas-point.selected")?.focus({ preventScroll: true }); }
+    });
+    svg.append(circle);
+  }
+  els.atlasPlot.replaceChildren(svg);
+
+  const detailPlan = chosen && points.find(plan => planKey(plan) === planKey(chosen));
+  els.atlasDetail.hidden = !detailPlan;
+  if (!detailPlan) return;
+  const difference = Math.abs(detailPlan.da - detailPlan.db);
+  const top = node("div", "atlas-detail-top");
+  top.append(node("span", "atlas-detail-kicker", "SELECTED ROUTE"), node("span", "atlas-detail-balance", difference <= .3 ? "NEAR EVEN" : "UNEQUAL SPLIT"));
+  const title = node("h3", "", `${detailPlan.first.name} → ${detailPlan.second.name}`);
+  const copy = node("p", "", `Person A travels ${fmt(detailPlan.da)} and person B travels ${fmt(detailPlan.db)} to meet. Their trips differ by ${fmt(difference)}. The second stop is ${fmt(detailPlan.hop)} away in a straight line.`);
+  const actions = node("div", "atlas-detail-actions");
+  for (const [label, place] of [["Explore stop 1 ↗", detailPlan.first], ["Explore stop 2 ↗", detailPlan.second]]) {
+    const link = node("a", "", label); link.href = mapsLink(place); link.target = "_blank"; link.rel = "noopener noreferrer";
+    link.setAttribute("aria-label", `Open ${place.name} in Google Maps`); actions.append(link);
+  }
+  els.atlasDetail.replaceChildren(top, title, copy, actions);
+}
+
 function render() {
   els.templates.forEach(button => { const active = button.dataset.template === state.template; button.classList.toggle("active", active); button.setAttribute("aria-pressed", String(active)); });
   els.priorities.forEach(button => { const active = button.dataset.priority === state.priority; button.classList.toggle("active", active); button.setAttribute("aria-pressed", String(active)); });
@@ -268,10 +403,16 @@ function render() {
   const ranked = getRanked();
   const plans = pickDiverse(ranked);
   state.visiblePlans = plans;
-  const requested = state.requestedPlan && plans.find(p => planKey(p) === state.requestedPlan);
+  const requested = state.requestedPlan && ranked.find(p => planKey(p) === state.requestedPlan);
   if (requested) { state.selected = planKey(requested); state.requestedPlan = null; }
-  if (!plans.some(plan => planKey(plan) === state.selected)) state.selected = plans[0] ? planKey(plans[0]) : null;
-  const chosen = plans.find(plan => planKey(plan) === state.selected) || null;
+  if (!ranked.some(plan => planKey(plan) === state.selected)) state.selected = plans[0] ? planKey(plans[0]) : null;
+  let candidates = atlasCandidates(ranked, plans);
+  let chosen = ranked.find(plan => planKey(plan) === state.selected) || null;
+  if (chosen && !candidates.some(plan => planKey(plan) === state.selected)) candidates.push(chosen);
+  if (state.atlasFairOnly && candidates.some(plan => Math.abs(plan.da - plan.db) <= .3) && chosen && Math.abs(chosen.da - chosen.db) > .3) {
+    chosen = candidates.find(plan => Math.abs(plan.da - plan.db) <= .3);
+    state.selected = planKey(chosen);
+  }
   els.list.replaceChildren(...plans.map(resultCard));
   els.empty.hidden = ranked.length !== 0;
   const distance = state.limit === 100 ? "the area" : `${state.limit} miles of both starts`;
@@ -280,11 +421,13 @@ function render() {
     : `No ${TEMPLATES[state.template].title.toLowerCase()} plans within ${distance}.`;
   if (chosen) {
     els.mapPlan.hidden = false;
-    els.mapPlanNum.textContent = `/ PLAN ${String(plans.indexOf(chosen) + 1).padStart(2, "0")}`;
+    const shortlistIndex = plans.findIndex(plan => planKey(plan) === state.selected);
+    els.mapPlanNum.textContent = shortlistIndex >= 0 ? `/ PLAN ${String(shortlistIndex + 1).padStart(2, "0")}` : "/ ATLAS PICK";
     els.mapPlanTitle.textContent = `${chosen.first.name} → ${chosen.second.name}`;
     els.mapPlanDetail.textContent = `A ${fmt(chosen.da)} · B ${fmt(chosen.db)} · stops ${fmt(chosen.hop)} apart`;
   } else els.mapPlan.hidden = true;
   updateMap(plans, chosen);
+  renderAtlas(candidates, chosen, ranked.length);
 }
 
 readHash();
@@ -318,6 +461,7 @@ $("cancel-pick").addEventListener("click", stopPicking);
 els.templates.forEach(button => button.addEventListener("click", () => { state.template = button.dataset.template; state.selected = null; render(); writeHash(); }));
 els.priorities.forEach(button => button.addEventListener("click", () => { state.priority = button.dataset.priority; state.selected = null; render(); writeHash(); }));
 els.limit.addEventListener("change", () => { state.limit = Number(els.limit.value); state.selected = null; render(); writeHash(); });
+els.atlasFair.addEventListener("click", () => { state.atlasFairOnly = !state.atlasFairOnly; render(); writeHash(); });
 els.share.addEventListener("click", async () => {
   writeHash();
   try { await navigator.clipboard.writeText(location.href); els.share.textContent = "✓ Copied"; }
