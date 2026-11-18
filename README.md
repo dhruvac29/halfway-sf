@@ -2,7 +2,7 @@
 
 **Live demo:** [halfway-sf.onrender.com](https://halfway-sf.onrender.com/)
 
-**One-sentence pitch:** Halfway turns two San Francisco starting points into a fair, two-stop outing—somewhere to meet, followed by something nearby to do together—using real places from Overture Maps.
+**One-sentence pitch:** Halfway turns two San Francisco starting points into a fair, two-stop outing: somewhere to meet, followed by something nearby to do together, using real places from Overture Maps.
 
 ## Why this product
 
@@ -13,15 +13,17 @@
 1. Choose two neighborhoods or click precise starting points on the map.
 2. Choose a kind of outing: coffee and a wander, a bite and some art, drinks and a show, or fresh air and a bite.
 3. Set a maximum trip to the first stop and choose whether to favor a fair split or a shorter trip.
-4. Compare three geographically distinct plans, inspect each on the map, open either stop in Google Maps, and share the whole search with a URL.
+4. Compare three geographically distinct plans and inspect each on the map.
+5. Explore the Compromise Atlas to see how a meeting place changes each person's trip. Filter for near-even meetings, select any charted route, and open either stop in Google Maps.
+6. Share the whole search, including the selected Atlas route and filter, with a URL.
 
 No account, API key, server database, or geolocation permission is required.
 
 ## How it works
 
-The browser loads a 9,443-place San Francisco extract from Overture's places theme. A spatial grid finds compatible second stops near each potential first stop. Each place must match the template's visitable categories and have a high Overture confidence score; non-park venues also need a source website. Repeated chain names and obvious organization names are excluded from first-stop suggestions. Plans are ranked by the farther person's straight-line distance to stop 1, the imbalance between the two travelers, the distance between stops, and a small record-quality adjustment. A geographic spacing rule gives the shortlist variety.
+The browser loads a 9,443-place San Francisco extract from Overture's places theme. A spatial grid finds compatible second stops near each potential first stop. Each place must match the template's visitable categories and have a high Overture confidence score; non-park venues also need a source website. Repeated chain names and obvious organization names are excluded from first-stop suggestions. Plans are ranked by the farther person's straight-line distance to stop 1, the imbalance between the two travelers, the distance between stops, and a small record-quality adjustment. A geographic spacing rule gives the shortlist variety. The Atlas samples the ranked plans across six distance bands for each traveler. Its shaded diagonal shows near-even meetings, and each selectable point keeps the second stop in the plan. This exposes real geographic trade-offs beyond the top three while keeping the chart readable.
 
-The search is entirely local in the browser. The URL hash stores the two starts, outing type, distance limit, ranking preference, and selected plan.
+The search is entirely local in the browser. The URL hash stores the two starts, outing type, distance limit, ranking preference, Atlas filter, and selected plan.
 
 ## Data and provenance
 
